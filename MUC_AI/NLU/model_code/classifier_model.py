@@ -26,7 +26,7 @@ class Classi_Model(object):
 if __name__ == '__main__':
     model = Classi_Model('../model_file/')
 
-    text = '你好'
+    text = '请问心脏病怎么治'
     label = model.predict(text)
     print(label)
 

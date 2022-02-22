@@ -55,29 +55,39 @@ def run(data_path, model_save_path):
     train_X = vec.fit_transform(train_X)
     test_X = vec.transform(test_X)
 
-    # -----------------LR------------------
-    LR = LogisticRegression(C=8, dual=False, max_iter=400, n_jobs=2, multi_class='ovr', random_state=122)
-    LR.fit(train_X, train_y)
-    pred = LR.predict(test_X)
-    print(classification_report(test_y, pred, target_names=target_names))
-    print(confusion_matrix(test_y, pred,labels=labels))
-
     # ----------------GBDT-----------------
-    print(train_X.shape)
-    print(test_X.shape)
     gbdt = GradientBoostingClassifier(n_estimators=450, learning_rate=0.01, max_depth=8, random_state=24)
     gbdt.fit(train_X, train_y)
+    train_new_feature_train = gbdt.apply(train_X)
+    train_new_feature_train = train_new_feature_train.reshape(train_X.shape[0], -1)
+    train_new_feature_test = gbdt.apply(test_X)
+    train_new_feature_test = train_new_feature_test.reshape(test_X.shape[0], -1)
+    print(train_new_feature_train.shape)
+    print(train_new_feature_test.shape)
+    enc = OneHotEncoder()
+    enc.fit(train_new_feature_train)
+    train_new_feature_train = np.array(enc.transform(train_new_feature_train).toarray())
+    train_new_feature_test = np.array(enc.transform(train_new_feature_test).toarray())
     pred = gbdt.predict(test_X)
     print(classification_report(test_y, pred,target_names=target_names))
     print(confusion_matrix(test_y, pred,labels=labels))
 
-    # -------------融合--------------
-    pred_prob1 = LR.predict_proba(test_X)
-    pred_prob2 = gbdt.predict_proba(test_X)
-
-    pred = np.argmax((pred_prob1 + pred_prob2)/2, axis=1)
+    # -----------------LR------------------
+    LR = LogisticRegression(C=8, dual=False, max_iter=400, n_jobs=2, multi_class='ovr', random_state=122)
+    print(train_new_feature_train.shape)
+    print(train_new_feature_test.shape)
+    LR.fit(train_new_feature_train, train_y)
+    pred = LR.predict(train_new_feature_test)
     print(classification_report(test_y, pred, target_names=target_names))
-    print(confusion_matrix(test_y, pred, labels=labels))
+    print(confusion_matrix(test_y, pred,labels=labels))
+
+    # # -------------融合--------------
+    # pred_prob1 = LR.predict_proba(test_X)
+    # pred_prob2 = gbdt.predict_proba(test_X)
+    #
+    # pred = np.argmax((pred_prob1 + pred_prob2)/2, axis=1)
+    # print(classification_report(test_y, pred, target_names=target_names))
+    # print(confusion_matrix(test_y, pred, labels=labels))
 
     pickle.dump(id2label, open(os.path.join(model_save_path, 'id2label.pkl'), 'wb'))
     pickle.dump(vec, open(os.path.join(model_save_path, 'vec.pkl'), 'wb'))
